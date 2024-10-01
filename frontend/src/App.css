@@ -1,0 +1,32 @@
+.App {
+    text-align: center;
+}
+
+* {
+    color: white;
+}
+
+strong {
+    color: black;
+}
+
+.message-sent {
+    /*background-color: #0271f3;*/
+    text-align: right;
+    border: 0;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 5px 0;
+    align-self: flex-end;
+    max-width: 75%;
+}
+
+.message-received {
+    text-align: left;
+    border: 0;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 5px 0;
+    align-self: flex-start;
+    max-width: 75%;
+}
