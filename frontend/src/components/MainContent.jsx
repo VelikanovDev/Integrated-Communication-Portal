@@ -43,6 +43,9 @@ const MainContent = ({selectedChannel, loadingConversations, setLoadingConversat
         setMessage('');
         setRecipient(null);
         setMessageFrom(null);
+        setLoadingMessages(false);
+        setAlertMessage('');
+        setAlertVisible(false);
     };
 
     const fetchConversations = async () => {
