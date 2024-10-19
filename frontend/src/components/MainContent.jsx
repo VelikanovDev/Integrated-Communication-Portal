@@ -102,7 +102,7 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
         setAlertVisible(false);
     };
     const handleFacebookConversation = (data, conversationId) => {
-        setMessages(data);
+        setMessages(data.reverse().slice());
         const conversation = conversations.find((conv) => conv.id === conversationId);
         if (conversation && conversation.participants && conversation.participants[0]) {
             setRecipient(conversation.participants[0].id);
@@ -119,16 +119,24 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
     };
 
     const handleEmailConversation = (data, conversationId) => {
-        setMessages(data[conversationId]);
-        setRecipient(data[conversationId][0].from);
+        if (selectedChannel === 'All') {
+            let conversation = conversations[conversationId];
+            // Filter out the actual messages (ignoring 'channel' or any other non-numeric properties)
+            let messagesArray = Object.values(conversation).filter((msg) => typeof msg === 'object');
+            setMessages(messagesArray);
+            setRecipient(messagesArray[0].from);
+        } else {
+            setMessages(data[conversationId]);
+            setRecipient(data[conversationId][0].from);
+        }
     };
 
     const handleSendMessage = async () => {
         let newMessage = null;
-        if (selectedChannel === 'Facebook' && message.trim()) {
+        if (selectedConversation.channel === 'Facebook' && message.trim()) {
             newMessage = await handleFacebookSendMessage();
             setMessages((prevMessages) => [newMessage, ...prevMessages])
-        } else if (selectedChannel === 'WhatsApp' && message.trim()) {
+        } else if (selectedConversation.channel === 'WhatsApp' && message.trim()) {
             newMessage = await handleWhatsAppSendMessage();
 
             if (newMessage === null) {
@@ -136,7 +144,7 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
             }
 
             setMessages((prevMessages) => [...prevMessages, newMessage])
-        } else if (selectedChannel === 'Email' && message.trim()) {
+        } else if (selectedConversation.channel === 'Email' && message.trim()) {
             newMessage = await handleEmailSendMessage();
             setMessages((prevMessages) => [...prevMessages, newMessage])
         }
@@ -217,7 +225,7 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
                                 handleConversationClick(conversation, index);
                             }
                         }}
-                        active={selectedConversation === getConversationId(conversation, index)}
+                        active={selectedConversation === conversation}
                     >
                         {renderConversationHeader(conversation, dateFormatted)}
                     </ListGroup.Item>
@@ -233,11 +241,12 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
     }
 
     const getConversationKey = (conversation, index) => (
-        selectedChannel === 'Facebook' ? conversation.id : conversation.from + '' + index
+        conversation.channel === 'Facebook' ? conversation.id : conversation.from + '' + index
     );
 
     const getConversationId = (conversation, index) => (
-        selectedChannel === 'Facebook' ? conversation.id : selectedChannel === 'WhatsApp' ? conversation.sender : index
+        conversation.channel === 'Facebook' ? conversation.id :
+            conversation.channel === 'WhatsApp' ? conversation.sender : index
     );
 
     const renderConversationHeader = (conversation, dateFormatted) => {
@@ -251,16 +260,16 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
         }
 
         return <>
-            <strong>{sender} </strong>
-            {selectedChannel === 'All' && <strong>({conversation.channel})</strong>}
+            <span className="text-black">{sender} </span>
+            {selectedChannel === 'All' && <span className="text-black">({conversation.channel})</span>}
             <br />
-            {dateFormatted}
+            <span className="text-black">{dateFormatted}</span>
         </>;
     };
     const renderMessages = () => (
         <ListGroup>
             {selectedConversation === null ? '' :
-                (messages.length === 0 ? '' : messages.slice().reverse().map((message, index) => {
+                (messages.length === 0 ? '' : messages.map((message, index) => {
                     const isSent = selectedConversation.channel === 'Facebook'
                         ? message.from?.name === messageFrom
                         : selectedConversation.channel === 'WhatsApp'
@@ -273,8 +282,8 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
 
                     return (
                         <ListGroup.Item key={`${selectedConversation}-${index}`} className={messageClass}>
-                            <strong>{renderMessageSender(message)}</strong>{': '}
-                            {renderMessageContent(message)}
+                            <strong>{renderMessageSender(selectedConversation, message)}</strong>{': '}
+                            {renderMessageContent(selectedConversation, message)}
                         </ListGroup.Item>
                     );
                 }))}
@@ -291,23 +300,23 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
                 </InputGroup>)}
         </ListGroup>
     );
-    const renderMessageSender = (message) => {
-        if (selectedChannel === 'Facebook' && message.from && typeof message.from.name === 'string') {
+    const renderMessageSender = (selectedConversation, message) => {
+        if (selectedConversation.channel === 'Facebook' && message.from && typeof message.from.name === 'string') {
             return message.from.name || 'Unknown Sender';
-        } else if (selectedChannel === 'Email' && typeof message.from === 'string') {
+        } else if (selectedConversation.channel === 'Email' && typeof message.from === 'string') {
             return message.from || 'Unknown Sender';
-        } else if (selectedChannel === 'WhatsApp' && message.sender) {
+        } else if (selectedConversation.channel === 'WhatsApp' && message.sender) {
             return message.sender || 'Unknown Sender';
         }
         return 'Unknown Sender';
     };
 
-    const renderMessageContent = (message) => {
-        if (selectedChannel === 'Facebook' && message.message) {
+    const renderMessageContent = (selectedConversation, message) => {
+        if (selectedConversation.channel === 'Facebook' && message.message) {
             return message.message;
-        } else if (selectedChannel === 'Email' && message.body) {
+        } else if (selectedConversation.channel === 'Email' && message.body) {
             return message.body;
-        } else if (selectedChannel === 'WhatsApp' && message.message) {
+        } else if (selectedConversation.channel === 'WhatsApp' && message.message) {
             return message.message;
         }
         return '';
