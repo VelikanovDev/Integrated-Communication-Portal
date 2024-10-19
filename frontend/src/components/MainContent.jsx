@@ -17,7 +17,7 @@ import {
     sendWhatsAppMessage
 } from "../services/WhatsAppService";
 
-const MainContent = ({selectedChannel, loadingConversations, setLoadingConversations}) => {
+const MainContent = ({channels, selectedChannel, loadingConversations, setLoadingConversations}) => {
     const [conversations, setConversations] = useState([]);
     const [selectedConversation, setSelectedConversation] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -52,12 +52,25 @@ const MainContent = ({selectedChannel, loadingConversations, setLoadingConversat
         setLoadingConversations(true);
         try {
             let data = [];
-            if (selectedChannel === 'Facebook') {
-                data = await fetchFacebookConversations();
+            if (selectedChannel === 'All') {
+                const facebookConversations = await fetchFacebookConversations();
+                const whatsAppConversations = await fetchWhatsAppConversations();
+                const emailConversations = await fetchEmailConversations();
+
+                data = [
+                    ...facebookConversations.map((conv) => ({ ...conv, channel: 'Facebook' })),
+                    ...whatsAppConversations.map((conv) => ({ ...conv, channel: 'WhatsApp' })),
+                    ...emailConversations.map((conv) => ({ ...conv, channel: 'Email' }))
+                ];
+            } else if (selectedChannel === 'Facebook') {
+                const facebookConversations = await fetchFacebookConversations();
+                data = facebookConversations.map((conv) => ({ ...conv, channel: 'Facebook' }));
             } else if (selectedChannel === 'WhatsApp') {
-                data = await fetchWhatsAppConversations();
+                const whatsAppConversations = await fetchWhatsAppConversations();
+                data = whatsAppConversations.map((conv) => ({ ...conv, channel: 'WhatsApp' }));
             } else if (selectedChannel === 'Email') {
-                data = await fetchEmailConversations();
+                const emailConversations = await fetchEmailConversations();
+                data = emailConversations.map((conv) => ({ ...conv, channel: 'Email' }));
             }
             setConversations(data);
         } catch (error) {
@@ -66,28 +79,28 @@ const MainContent = ({selectedChannel, loadingConversations, setLoadingConversat
             setLoadingConversations(false);
         }
     };
-
-    const handleConversationClick = async (conversationId) => {
+    const handleConversationClick = async (conversation, index) => {
         setLoadingMessages(true);
-        setSelectedConversation(conversationId);
+        setSelectedConversation(conversation);
         setMessages([]);
 
+        let conversationId = getConversationId(conversation, index);
         let data = [];
-        if (selectedChannel === 'Facebook') {
+        if (conversation.channel === 'Facebook') {
             data = await fetchFacebookMessages(conversationId);
             handleFacebookConversation(data, conversationId);
-        } else if (selectedChannel === 'WhatsApp') {
+        } else if (conversation.channel === 'WhatsApp') {
             data = await fetchWhatsAppMessages(conversationId);
             handleWhatsAppConversation(data);
-        } else if (selectedChannel === 'Email') {
-            data = await fetchEmailConversations(conversationId);
+        } else if (conversation.channel === 'Email') {
+            data = await fetchEmailConversations();
             handleEmailConversation(data, conversationId);
         }
+
         setLoadingMessages(false);
         setAlertMessage('');
         setAlertVisible(false);
     };
-
     const handleFacebookConversation = (data, conversationId) => {
         setMessages(data);
         const conversation = conversations.find((conv) => conv.id === conversationId);
@@ -186,21 +199,22 @@ const MainContent = ({selectedChannel, loadingConversations, setLoadingConversat
     const renderConversations = () => (
         <ListGroup>
             {conversations.map((conversation, index) => {
-                const conversationUpdatedTime = selectedChannel === 'Facebook'
+                const conversationUpdatedTime = conversation.channel === 'Facebook'
                     ? conversation.updatedTime
-                    : selectedChannel === 'WhatsApp'
+                    : conversation.channel === 'WhatsApp'
                         ? conversation.lastMessageDate
-                        : selectedChannel === 'Email'
-                            ? conversation[conversation.length - 1].sentDate
+                        : conversation.channel === 'Email'
+                            ? conversation[getLastIndexOfEmailConversation(conversation)].sentDate
                             : "";
                 const dateFormatted = formatDateFromString(conversationUpdatedTime);
+
                 return (
                     <ListGroup.Item
                         key={getConversationKey(conversation, index)}
                         action
                         onClick={() => {
                             if (selectedConversation !== getConversationId(conversation, index)) {
-                                handleConversationClick(getConversationId(conversation, index));
+                                handleConversationClick(conversation, index);
                             }
                         }}
                         active={selectedConversation === getConversationId(conversation, index)}
@@ -212,6 +226,12 @@ const MainContent = ({selectedChannel, loadingConversations, setLoadingConversat
         </ListGroup>
     );
 
+    const getLastIndexOfEmailConversation = (conversation) => {
+        const keys = Object.keys(conversation);  // Get all keys from the conversation object
+        const numericKeys = keys.filter(key => !isNaN(key)).map(Number);
+        return Math.max(...numericKeys);
+    }
+
     const getConversationKey = (conversation, index) => (
         selectedChannel === 'Facebook' ? conversation.id : conversation.from + '' + index
     );
@@ -221,39 +241,31 @@ const MainContent = ({selectedChannel, loadingConversations, setLoadingConversat
     );
 
     const renderConversationHeader = (conversation, dateFormatted) => {
-        if (selectedChannel === 'Facebook' && conversation.participants && conversation.participants[0]) {
-            return <>
-                {conversation.participants[0].name}
-                <br/>
-                {dateFormatted}
-            </>;
-        } else if (selectedChannel === 'WhatsApp') {
-            return <>
-                {conversation.sender}
-                <br/>
-                {dateFormatted}
-            </>;
-        } else if (selectedChannel === 'Email' && conversation[0] && typeof conversation[0].from === 'string') {
-            return <>
-                {conversation[0].from}
-                <br/>
-                {dateFormatted}
-            </>;
+        let sender = 'Unknown Sender';
+        if (conversation.channel === 'Facebook' && conversation.participants && conversation.participants[0]) {
+            sender = conversation.participants[0].name;
+        } else if (conversation.channel === 'WhatsApp') {
+            sender = conversation.sender;
+        } else if (conversation.channel === 'Email' && conversation[0]) {
+            sender = conversation[0].from;
         }
-        return 'Unknown Sender';
-    };
 
+        return <>
+            <strong>{sender} </strong>
+            {selectedChannel === 'All' && <strong>({conversation.channel})</strong>}
+            <br />
+            {dateFormatted}
+        </>;
+    };
     const renderMessages = () => (
         <ListGroup>
             {selectedConversation === null ? '' :
-                (messages.length === 0 ? '' : (
-                    selectedChannel === 'Facebook' ? messages.slice().reverse() : messages
-                ).map((message, index) => {
-                    const isSent = selectedChannel === 'Facebook'
+                (messages.length === 0 ? '' : messages.slice().reverse().map((message, index) => {
+                    const isSent = selectedConversation.channel === 'Facebook'
                         ? message.from?.name === messageFrom
-                        : selectedChannel === 'WhatsApp'
+                        : selectedConversation.channel === 'WhatsApp'
                             ? message.sender === messageFrom
-                            : selectedChannel === 'Email'
+                            : selectedConversation.channel === 'Email'
                                 ? message.from === messages[0]?.to
                                 : false;
 
@@ -269,18 +281,16 @@ const MainContent = ({selectedChannel, loadingConversations, setLoadingConversat
             {selectedConversation === null ? '' :
                 (<InputGroup className="mb-3">
                     <FormControl
-                        aria-label="Example text with button addon"
-                        aria-describedby="basic-addon1"
+                        aria-label="Message"
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                     />
-                    <Button variant="primary" id="button-addon1" onClick={handleSendMessage}>
+                    <Button variant="primary" onClick={handleSendMessage}>
                         Send
                     </Button>
                 </InputGroup>)}
         </ListGroup>
     );
-
     const renderMessageSender = (message) => {
         if (selectedChannel === 'Facebook' && message.from && typeof message.from.name === 'string') {
             return message.from.name || 'Unknown Sender';
@@ -304,7 +314,7 @@ const MainContent = ({selectedChannel, loadingConversations, setLoadingConversat
     };
 
     const renderContent = () => {
-        if (selectedChannel === 'Facebook' || selectedChannel === 'Email' || selectedChannel === 'WhatsApp') {
+        if (channels.includes(selectedChannel)) {
             return (
                 <Row>
                     <Col xs={3} style={{

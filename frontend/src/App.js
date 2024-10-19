@@ -29,6 +29,7 @@ const App = () => {
                 </Col>
                 <Col style={{backgroundColor: "#33334a"}}>
                     <MainContent
+                        channels={channels}
                         selectedChannel={selectedChannel}
                         loadingConversations={loadingConversations}
                         setLoadingConversations={setLoadingConversations}
