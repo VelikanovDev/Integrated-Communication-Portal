@@ -135,7 +135,7 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
         let newMessage = null;
         if (selectedConversation.channel === 'Facebook' && message.trim()) {
             newMessage = await handleFacebookSendMessage();
-            setMessages((prevMessages) => [newMessage, ...prevMessages])
+            setMessages((prevMessages) => [...prevMessages, newMessage])
         } else if (selectedConversation.channel === 'WhatsApp' && message.trim()) {
             newMessage = await handleWhatsAppSendMessage();
 
@@ -267,7 +267,7 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
         </>;
     };
     const renderMessages = () => (
-        <ListGroup>
+        <ListGroup className="messages-container">
             {selectedConversation === null ? '' :
                 (messages.length === 0 ? '' : messages.map((message, index) => {
                     const isSent = selectedConversation.channel === 'Facebook'
