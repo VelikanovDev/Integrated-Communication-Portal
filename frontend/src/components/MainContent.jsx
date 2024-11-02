@@ -293,6 +293,11 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
                         aria-label="Message"
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                handleSendMessage();
+                            }
+                        }}
                     />
                     <Button variant="primary" onClick={handleSendMessage}>
                         Send
