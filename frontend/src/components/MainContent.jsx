@@ -1,6 +1,8 @@
-import React, {useState, useEffect} from 'react';
-import {Container, Row, Col, ListGroup, Spinner, FormControl, InputGroup, Button, Alert} from 'react-bootstrap';
+import React, {useState, useEffect, useContext} from 'react';
+import {Container, Row, Col, ListGroup, Spinner, FormControl, InputGroup, Button, Alert, Badge} from 'react-bootstrap';
 import '../App.css';
+import { UnreadMessagesContext } from "../context/UnreadMessagesContext";
+
 
 import {
     fetchFacebookConversations,
@@ -30,6 +32,9 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
     const [alertVariant, setAlertVariant] = useState('danger');
+
+    const { facebookUnreadCount, allUnreadCount, facebookNotifications } = useContext(UnreadMessagesContext);
+    const { markConversationAsRead } = useContext(UnreadMessagesContext);
 
     useEffect(() => {
         resetState();
@@ -85,6 +90,7 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
         setMessages([]);
 
         let conversationId = getConversationId(conversation, index);
+        markConversationAsRead(conversationId);
         let data = [];
         if (conversation.channel === 'Facebook') {
             data = await fetchFacebookMessages(conversationId);
@@ -251,8 +257,17 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
 
     const renderConversationHeader = (conversation, dateFormatted) => {
         let sender = 'Unknown Sender';
+        let unreadCount = 0;
+
         if (conversation.channel === 'Facebook' && conversation.participants && conversation.participants[0]) {
             sender = conversation.participants[0].name;
+
+            // Find the unread count for Facebook notifications
+            const notification = facebookNotifications.find(
+                (notif) => notif.participantName === sender
+            );
+
+            unreadCount = notification ? notification.newMessagesCount : 0;
         } else if (conversation.channel === 'WhatsApp') {
             sender = conversation.sender;
         } else if (conversation.channel === 'Email' && conversation[0]) {
@@ -262,6 +277,11 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
         return <>
             <span className="text-black">{sender} </span>
             {selectedChannel === 'All' && <span className="text-black">({conversation.channel})</span>}
+            {unreadCount > 0 && (
+                <Badge bg="danger" pill style={{ marginLeft: "5px" }}>
+                    {unreadCount}
+                </Badge>
+            )}
             <br />
             <span className="text-black">{dateFormatted}</span>
         </>;
