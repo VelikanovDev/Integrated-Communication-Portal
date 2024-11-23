@@ -4,7 +4,7 @@ import { UnreadMessagesContext } from '../context/UnreadMessagesContext'; // Adj
 
 const Sidebar = ({ channels, selectedChannel, setSelectedChannel }) => {
     // Access the unread message counts from the context
-    const { facebookUnreadCount, allUnreadCount } = useContext(UnreadMessagesContext);
+    const { facebookUnreadCount, whatsappUnreadCount, allUnreadCount } = useContext(UnreadMessagesContext);
 
     return (
         <Nav className="flex-column sidebar" style={{ width: '200px' }}>
@@ -16,14 +16,19 @@ const Sidebar = ({ channels, selectedChannel, setSelectedChannel }) => {
                     style={{ cursor: 'pointer' }}
                 >
                     {channel}
-                    {channel === "All" && allUnreadCount > 0 && (
-                        <Badge bg="danger" pill style={{ marginLeft: "15px" }}>
-                            {allUnreadCount}
-                        </Badge>
-                    )}
+                    {/*{channel === "All" && allUnreadCount > 0 && (*/}
+                    {/*    <Badge bg="danger" pill style={{ marginLeft: "15px" }}>*/}
+                    {/*        {allUnreadCount}*/}
+                    {/*    </Badge>*/}
+                    {/*)}*/}
                     {channel === "Facebook" && facebookUnreadCount > 0 && (
                         <Badge bg="danger" pill style={{ marginLeft: "15px" }}>
                             {facebookUnreadCount}
+                        </Badge>
+                    )}
+                    {channel === "WhatsApp" && whatsappUnreadCount > 0 && (
+                        <Badge bg="danger" pill style={{ marginLeft: "15px" }}>
+                            {whatsappUnreadCount}
                         </Badge>
                     )}
                 </Nav.Link>

@@ -33,8 +33,7 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
     const [alertMessage, setAlertMessage] = useState('');
     const [alertVariant, setAlertVariant] = useState('danger');
 
-    const { facebookUnreadCount, allUnreadCount, facebookNotifications } = useContext(UnreadMessagesContext);
-    const { markConversationAsRead } = useContext(UnreadMessagesContext);
+    const { facebookUnreadCount, whatsappNotifications, allUnreadCount, facebookNotifications, markConversationAsRead } = useContext(UnreadMessagesContext);
 
     useEffect(() => {
         resetState();
@@ -90,7 +89,8 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
         setMessages([]);
 
         let conversationId = getConversationId(conversation, index);
-        markConversationAsRead(conversationId);
+        markConversationAsRead(conversationId, conversation.channel);
+
         let data = [];
         if (conversation.channel === 'Facebook') {
             data = await fetchFacebookMessages(conversationId);
@@ -270,6 +270,12 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
             unreadCount = notification ? notification.newMessagesCount : 0;
         } else if (conversation.channel === 'WhatsApp') {
             sender = conversation.sender;
+
+            // Find the unread count for Facebook notifications
+            const notification = whatsappNotifications.find(
+                (notif) => notif.sender === sender
+            );
+            unreadCount = notification ? notification.unreadCount : 0;
         } else if (conversation.channel === 'Email' && conversation[0]) {
             sender = conversation[0].from;
         }

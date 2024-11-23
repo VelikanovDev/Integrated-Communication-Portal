@@ -47,3 +47,21 @@ export const sendWhatsAppMessage = async (recipient, message) => {
         return {error: 'An unexpected error occurred. Please try again.'};
     }
 };
+
+export const markWhatsAppConversationAsRead = async (sender) => {
+    try {
+        await axios.put(`http://localhost:8080/whatsapp/mark-as-read/${sender}`);
+    } catch (error) {
+        console.error("Failed to mark WhatsApp conversation as read: ", error);
+    }
+};
+
+export const getCountOfWhatsAppUnreadMessages = async () => {
+    try {
+        const response = await axiosInstance.get(`${API_BASE_URL}/unread-messages`);
+        return response.data.length;
+    } catch (error) {
+        console.error("Failed to fetch WhatsApp unread count: ", error);
+        return null;
+    }
+}

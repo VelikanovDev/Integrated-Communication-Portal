@@ -31,4 +31,6 @@ public class WhatsAppMessage {
     private String messageId;
     @Column
     private Date sentDate;
+    @Column
+    private boolean unread = true;
 }

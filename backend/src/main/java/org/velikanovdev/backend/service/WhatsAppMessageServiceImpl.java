@@ -1,5 +1,6 @@
 package org.velikanovdev.backend.service;
 
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -36,23 +37,29 @@ public class WhatsAppMessageServiceImpl implements WhatsAppMessageService {
 
         // Filter out messages where the sender is the same as PHONE_NUMBER
         return messages.stream()
-                .filter(message -> !message.getSender().equals(PHONE_NUMBER)) // Filter out own number
+                .filter(message -> !message.getSender().equals(PHONE_NUMBER)) // Exclude own messages
                 .collect(Collectors.groupingBy(WhatsAppMessage::getSender)) // Group by sender
                 .entrySet()
                 .stream()
                 .map(entry -> {
                     String sender = entry.getKey();
-                    // Find the most recent message by comparing timestamps
-                    WhatsAppMessage latestMessage = entry.getValue().stream()
+                    List<WhatsAppMessage> senderMessages = entry.getValue();
+
+                    // Find the most recent message
+                    WhatsAppMessage latestMessage = senderMessages.stream()
                             .max(Comparator.comparing(WhatsAppMessage::getSentDate))
-                            .orElseThrow(); // Safeguard for missing values
+                            .orElseThrow();
+
+                    // Count unread messages for the sender
+                    long unreadCount = senderMessages.stream()
+                            .filter(WhatsAppMessage::isUnread)
+                            .count();
 
                     // Map to WhatsAppConversation
-                    return new WhatsAppConversation(sender, latestMessage.getSentDate());
+                    return new WhatsAppConversation(sender, latestMessage.getSentDate(), (int) unreadCount);
                 })
                 .collect(Collectors.toList());
     }
-
     @Override
     public List<WhatsAppMessage> getMessages(String sender) {
         // Fetch all messages from the repository
@@ -73,5 +80,23 @@ public class WhatsAppMessageServiceImpl implements WhatsAppMessageService {
         Date twentyFourHoursAgo = new Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000);
         List<WhatsAppMessage> messages = messageRepository.findBySenderAndSentDateAfter(sender, twentyFourHoursAgo);
         return !messages.isEmpty();
+    }
+
+    @Override
+    @Transactional
+    public void markConversationAsRead(String sender) {
+        List<WhatsAppMessage> unreadMessages = messageRepository.findBySenderAndUnreadTrue(sender);
+        unreadMessages.forEach(message -> message.setUnread(false));
+        messageRepository.saveAll(unreadMessages);
+    }
+
+    @Override
+    public long getUnreadMessageCountBySender(String sender) {
+        return messageRepository.countUnreadMessagesBySender(sender);
+    }
+
+    @Override
+    public List<WhatsAppMessage> getAllUnreadMessages() {
+        return messageRepository.findByUnreadTrue();
     }
 }

@@ -14,4 +14,5 @@ import java.util.Date;
 public class WhatsAppConversation {
     private String sender;
     private Date lastMessageDate;
+    private int unreadCount;
 }

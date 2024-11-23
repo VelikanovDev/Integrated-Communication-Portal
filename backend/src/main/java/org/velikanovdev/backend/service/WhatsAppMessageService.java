@@ -13,4 +13,10 @@ public interface WhatsAppMessageService {
     List<WhatsAppMessage> getMessages(String sender);
 
     boolean hasUserMessagedInLast24Hours(String sender);
+
+    void markConversationAsRead(String sender);
+
+    long getUnreadMessageCountBySender(String sender);
+
+    List<WhatsAppMessage> getAllUnreadMessages();
 }
