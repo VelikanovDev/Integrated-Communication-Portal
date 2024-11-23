@@ -67,7 +67,6 @@ const UnreadMessagesProvider = ({ children }) => {
                 let totalNewMessages = 0;
 
                 const updatedWhatsAppNotifications = data.map((conversation) => {
-                    console.log(conversation)
                     // Retrieve the stored conversation data
                     const storedData = JSON.parse(localStorage.getItem(conversation.sender)) || { unreadCount: 0 };
 
@@ -94,7 +93,6 @@ const UnreadMessagesProvider = ({ children }) => {
                 // Update state
                 setWhatsAppNotifications(updatedWhatsAppNotifications);
 
-                console.log(totalNewMessages + " totalNewMessages");
                 // Update WhatsApp unread count
                 setWhatsAppUnreadCount(totalNewMessages);
 
@@ -163,7 +161,7 @@ const UnreadMessagesProvider = ({ children }) => {
                 setWhatsAppNotifications((prevNotifications) =>
                     prevNotifications.map((notif) =>
                         notif.sender === conversationId
-                            ? {...notif, newMessagesCount: 0}
+                            ? {...notif, unreadCount: 0}
                             : notif
                     )
                 );
