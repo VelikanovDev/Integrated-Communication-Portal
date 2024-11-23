@@ -39,7 +39,6 @@ public class FBController {
         return emitter;
     }
 
-    // Scheduled task to poll Facebook API for unread messages every 10 seconds
     @Scheduled(fixedRate = 10000)
     public void pollConversations() {
         FacebookClient facebookClient = new DefaultFacebookClient(ACCESS_TOKEN, Version.LATEST);
@@ -51,10 +50,9 @@ public class FBController {
                 Parameter.with("fields", "id,participants,updated_time,messages{message,from,to,created_time},unread_count")
         );
 
-        // Map the conversations into a format suitable for the frontend
         List<ConversationDetail> conversationDetails = conversationList.getData().stream()
                 .map(conversation -> {
-                    // Extract the primary participant (assumes first participant)
+                    // Extract primary participant
                     NamedFacebookType primaryParticipant = conversation.getParticipants().stream()
                             .findFirst()
                             .orElse(null);
@@ -62,13 +60,16 @@ public class FBController {
                     String participantName = primaryParticipant != null ? primaryParticipant.getName() : "Unknown";
                     String participantId = primaryParticipant != null ? primaryParticipant.getId() : null;
 
-                    // Count messages from participants[0]
-                    long messagesFromPrimaryParticipant = conversation.getMessages().stream()
+                    // Fetch all messages (handle pagination)
+                    List<Message> allMessages = fetchAllMessages(facebookClient, conversation.getId());
+
+                    // Count messages from the primary participant
+                    long messagesFromPrimaryParticipant = allMessages.stream()
                             .filter(message -> message.getFrom() != null && message.getFrom().getId().equals(participantId))
                             .count();
 
                     // Map messages to a simplified structure
-                    List<MessageDetail> messageDetails = conversation.getMessages().stream()
+                    List<MessageDetail> messageDetails = allMessages.stream()
                             .map(message -> new MessageDetail(
                                     message.getId(),
                                     message.getMessage(),
@@ -91,6 +92,28 @@ public class FBController {
 
         // Notify clients with the updated list of conversations
         notifyClients(conversationDetails);
+    }
+
+    private List<Message> fetchAllMessages(FacebookClient facebookClient, String conversationId) {
+        List<Message> allMessages = new ArrayList<>();
+
+        // Fetch the first page of messages
+        Connection<Message> messages = facebookClient.fetchConnection(
+                conversationId + "/messages",
+                Message.class,
+                Parameter.with("fields", "id,message,from,to,created_time")
+        );
+
+        // Add messages from the first page
+        allMessages.addAll(messages.getData());
+
+        // Fetch subsequent pages
+        while (messages.hasNext()) {
+            messages = facebookClient.fetchConnectionPage(messages.getNextPageUrl(), Message.class);
+            allMessages.addAll(messages.getData());
+        }
+
+        return allMessages;
     }
 
     private void notifyClients(List<ConversationDetail> conversations) {
