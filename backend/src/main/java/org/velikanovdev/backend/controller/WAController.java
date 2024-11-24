@@ -113,6 +113,7 @@ public class WAController {
         msg.setRecipient(recipientPhone);
         msg.setMessage(message.getMessageText());
         msg.setSentDate(new Date());
+        msg.setUnread(false);
 
         Parameter[] params = new Parameter[]{
                 Parameter.with("messaging_product", "whatsapp"),
