@@ -49,7 +49,15 @@ const UnreadMessagesProvider = ({ children }) => {
 
                 // Update total unread count
                 setFacebookUnreadCount(totalNewMessages);
-                setAllUnreadCount((prev) => prev + totalNewMessages); // Update for 'All' channel if needed
+
+                // Update `allUnreadCount` only if the value has changed
+                setAllUnreadCount((prev) => {
+                    const difference = totalNewMessages - prev;
+                    if (difference !== 0) {
+                        return prev + difference;
+                    }
+                    return prev;
+                });
             } catch (error) {
                 console.error("Error parsing notifications data:", error);
             }
@@ -62,7 +70,6 @@ const UnreadMessagesProvider = ({ children }) => {
             try {
                 const data = JSON.parse(event.data);
 
-
                 // Initialize total unread messages count
                 let totalNewMessages = 0;
 
@@ -70,8 +77,11 @@ const UnreadMessagesProvider = ({ children }) => {
                     // Retrieve the stored conversation data
                     const storedData = JSON.parse(localStorage.getItem(conversation.sender)) || { unreadCount: 0 };
 
+                    // Calculate the difference in unread messages
+                    const newMessagesCount = Math.max(0, conversation.unreadCount - storedData.unreadCount);
+
                     // Update the total unread count
-                    totalNewMessages += conversation.unreadCount;
+                    totalNewMessages += newMessagesCount;
 
                     // Save updated conversation data to local storage
                     localStorage.setItem(
@@ -84,27 +94,31 @@ const UnreadMessagesProvider = ({ children }) => {
 
                     // Return the updated conversation with new messages count
                     return {
-                        ...conversation,
-                        hasNewMessages: totalNewMessages > 0,
-                        totalNewMessages,
+                        ...conversation
                     };
                 });
 
                 // Update state
                 setWhatsAppNotifications(updatedWhatsAppNotifications);
 
-                // Update WhatsApp unread count
-                setWhatsAppUnreadCount(totalNewMessages);
+                if (totalNewMessages === 0 ) {
+                    const newMessagesInLocalStorage = updatedWhatsAppNotifications.reduce( (total, conv) => total + conv.unreadCount, 0);
 
-                // Update the total unread count for all channels
-                setAllUnreadCount((prevCount) => {
-                    const previousWhatsAppCount = prevCount - whatsAppUnreadCount; // Subtract previous WhatsApp unread count
-                    return previousWhatsAppCount + totalNewMessages; // Add the updated WhatsApp unread count
-                });
+                    if (newMessagesInLocalStorage > 0) {
+                        setAllUnreadCount((prev) => prev + newMessagesInLocalStorage);
+                        setWhatsAppUnreadCount(newMessagesInLocalStorage);
+                    }
+                } else {
+                    setWhatsAppUnreadCount((prevUnreadCount) => prevUnreadCount + totalNewMessages);
+                    setAllUnreadCount((prevCount) => {
+                        return prevCount + totalNewMessages; // Add the updated WhatsApp unread count
+                    });
+                }
             } catch (error) {
                 console.error("Error parsing WhatsApp notifications data:", error);
             }
         });
+
 
         return () => {
             facebookSource.close();
@@ -129,7 +143,7 @@ const UnreadMessagesProvider = ({ children }) => {
                 setFacebookNotifications((prevNotifications) =>
                     prevNotifications.map((notif) =>
                         notif.id === conversationId
-                            ? {...notif, hasNewMessages: false, newMessagesCount: 0}
+                            ? { ...notif, hasNewMessages: false, newMessagesCount: 0 }
                             : notif
                     )
                 );
@@ -140,6 +154,8 @@ const UnreadMessagesProvider = ({ children }) => {
                     0
                 );
                 setFacebookUnreadCount(updatedUnreadCount);
+
+                // Update `allUnreadCount`
                 setAllUnreadCount((prevCount) => prevCount - conversation.newMessagesCount);
             }
         } else if (conversationChannel === "WhatsApp") {
@@ -154,27 +170,33 @@ const UnreadMessagesProvider = ({ children }) => {
                         unreadCount: 0,
                     })
                 );
-                await markWhatsAppConversationAsRead(conversationId).then(r => {
-                });
+
+                // Mark conversation as read on the backend
+                await markWhatsAppConversationAsRead(conversationId);
 
                 // Update state to reflect the changes
                 setWhatsAppNotifications((prevNotifications) =>
                     prevNotifications.map((notif) =>
                         notif.sender === conversationId
-                            ? {...notif, unreadCount: 0}
+                            ? { ...notif, unreadCount: 0 }
                             : notif
                     )
                 );
 
+                // Get updated WhatsApp unread count from the backend
                 const updatedUnreadCount = await getCountOfWhatsAppUnreadMessages();
+                const unreadMessagesCountForThisConversation = conversation.unreadCount;
 
+                // Update WhatsApp unread count
                 setWhatsAppUnreadCount(updatedUnreadCount);
+
+                // Update `allUnreadCount`
+                setAllUnreadCount((prevCount) => prevCount - unreadMessagesCountForThisConversation);
             }
         } else {
             console.warn(`Unsupported channel: ${conversationChannel}`);
         }
     };
-
     return (
         <UnreadMessagesContext.Provider
             value={{ facebookUnreadCount, whatsappUnreadCount: whatsAppUnreadCount, whatsappNotifications, allUnreadCount, facebookNotifications, markConversationAsRead }}

@@ -177,8 +177,6 @@ const MainContent = ({channels, selectedChannel, loadingConversations, setLoadin
     const handleWhatsAppSendMessage = async () => {
         const response = await sendWhatsAppMessage(recipient, message);
 
-        console.log(response);
-
         if (response.error) {
             setAlertMessage(response.error);
             setAlertVariant('danger');

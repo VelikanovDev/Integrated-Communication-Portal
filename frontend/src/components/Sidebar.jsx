@@ -16,11 +16,11 @@ const Sidebar = ({ channels, selectedChannel, setSelectedChannel }) => {
                     style={{ cursor: 'pointer' }}
                 >
                     {channel}
-                    {/*{channel === "All" && allUnreadCount > 0 && (*/}
-                    {/*    <Badge bg="danger" pill style={{ marginLeft: "15px" }}>*/}
-                    {/*        {allUnreadCount}*/}
-                    {/*    </Badge>*/}
-                    {/*)}*/}
+                    {channel === "All" && allUnreadCount > 0 && (
+                        <Badge bg="danger" pill style={{ marginLeft: "15px" }}>
+                            {allUnreadCount}
+                        </Badge>
+                    )}
                     {channel === "Facebook" && facebookUnreadCount > 0 && (
                         <Badge bg="danger" pill style={{ marginLeft: "15px" }}>
                             {facebookUnreadCount}
