@@ -1,10 +1,10 @@
 import React, { useContext } from 'react';
 import { Badge, Nav } from 'react-bootstrap';
-import { UnreadMessagesContext } from '../context/UnreadMessagesContext'; // Adjust the path as necessary
+import { UnreadMessagesContext } from '../context/UnreadMessagesContext';
 
 const Sidebar = ({ channels, selectedChannel, setSelectedChannel }) => {
     // Access the unread message counts from the context
-    const { facebookUnreadCount, whatsappUnreadCount, allUnreadCount } = useContext(UnreadMessagesContext);
+    const { facebookUnreadCount, whatsAppUnreadCount, emailUnreadCount } = useContext(UnreadMessagesContext);
 
     return (
         <Nav className="flex-column sidebar" style={{ width: '200px' }}>
@@ -16,19 +16,19 @@ const Sidebar = ({ channels, selectedChannel, setSelectedChannel }) => {
                     style={{ cursor: 'pointer' }}
                 >
                     {channel}
-                    {channel === "All" && allUnreadCount > 0 && (
-                        <Badge bg="danger" pill style={{ marginLeft: "15px" }}>
-                            {allUnreadCount}
-                        </Badge>
-                    )}
                     {channel === "Facebook" && facebookUnreadCount > 0 && (
                         <Badge bg="danger" pill style={{ marginLeft: "15px" }}>
                             {facebookUnreadCount}
                         </Badge>
                     )}
-                    {channel === "WhatsApp" && whatsappUnreadCount > 0 && (
+                    {channel === "WhatsApp" && whatsAppUnreadCount > 0 && (
                         <Badge bg="danger" pill style={{ marginLeft: "15px" }}>
-                            {whatsappUnreadCount}
+                            {whatsAppUnreadCount}
+                        </Badge>
+                    )}
+                    {channel === "Email" && emailUnreadCount > 0 && (
+                        <Badge bg="danger" pill style={{ marginLeft: "15px" }}>
+                            {emailUnreadCount}
                         </Badge>
                     )}
                 </Nav.Link>

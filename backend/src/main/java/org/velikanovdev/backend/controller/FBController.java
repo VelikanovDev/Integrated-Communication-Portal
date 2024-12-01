@@ -24,12 +24,11 @@ public class FBController {
     @Value("${facebook.access.token}")
     private String ACCESS_TOKEN;
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
-    private long lastUnreadCount = 0;
 
     // SSE endpoint for frontend to listen for unread message notifications
     @GetMapping("/facebook/notifications")
     public SseEmitter getUnreadMessageNotifications() {
-        SseEmitter emitter = new SseEmitter();
+        SseEmitter emitter = new SseEmitter(30 * 60 * 1000L); // 30 minutes timeout
         emitters.add(emitter);
 
         emitter.onCompletion(() -> emitters.remove(emitter));

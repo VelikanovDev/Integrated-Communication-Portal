@@ -3,6 +3,7 @@ package org.velikanovdev.backend.service;
 import jakarta.mail.*;
 import jakarta.mail.internet.MimeMultipart;
 import org.springframework.stereotype.Service;
+import org.velikanovdev.backend.entity.EmailConversation;
 import org.velikanovdev.backend.entity.ReceivedEmail;
 
 import java.io.IOException;
@@ -11,7 +12,7 @@ import java.util.*;
 @Service
 public class EmailReceiverService {
 
-    public List<List<ReceivedEmail>> fetchEmailConversations(String host, String storeType, String user, String password) {
+    public List<EmailConversation> fetchEmailConversations(String host, String storeType, String user, String password) {
         try {
             Properties properties = new Properties();
             properties.put("mail.store.protocol", storeType);
@@ -33,13 +34,13 @@ public class EmailReceiverService {
 
             store.close();
 
-            // Group emails by thread
+            // Group emails into conversations
             return groupEmailsByConversation(allReceivedEmails);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return null;
+        return Collections.emptyList();
     }
 
     private void fetchMessagesFromFolder(Store store, String folderName, List<ReceivedEmail> receivedEmails) throws MessagingException, IOException {
@@ -51,6 +52,9 @@ public class EmailReceiverService {
             String[] references = message.getHeader("References");
             String referencesHeader = (references != null && references.length > 0) ? String.join(" ", references) : null;
 
+            // Check if the email is read
+            boolean isRead = message.isSet(Flags.Flag.SEEN);
+
             String from = message.getFrom()[0].toString();
             receivedEmails.add(new ReceivedEmail(
                     from.substring(from.indexOf('<') + 1, from.indexOf('>')),
@@ -60,14 +64,15 @@ public class EmailReceiverService {
                     message.getHeader("In-Reply-To") != null ? message.getHeader("In-Reply-To")[0] : null,
                     referencesHeader,
                     message.getSentDate(),
-                    message.getAllRecipients()[0].toString()
+                    message.getAllRecipients()[0].toString(),
+                    isRead
             ));
         }
 
         folder.close(false);
     }
 
-    private List<List<ReceivedEmail>> groupEmailsByConversation(List<ReceivedEmail> receivedEmails) {
+    private List<EmailConversation> groupEmailsByConversation(List<ReceivedEmail> receivedEmails) {
         Map<String, List<ReceivedEmail>> conversationMap = new HashMap<>();
         Map<String, String> messageIdToThreadKey = new HashMap<>();
 
@@ -85,12 +90,28 @@ public class EmailReceiverService {
             conversationMap.get(threadKey).add(email);
         }
 
-        List<List<ReceivedEmail>> conversations = new ArrayList<>(conversationMap.values());
+        // Convert the grouped emails into EmailConversation objects
+        List<EmailConversation> conversations = new ArrayList<>();
+        for (Map.Entry<String, List<ReceivedEmail>> entry : conversationMap.entrySet()) {
+            String conversationId = entry.getKey();
+            List<ReceivedEmail> emails = entry.getValue();
+            long unreadMessages = emails.stream().filter(email -> !email.isRead()).count();
+
+            String sender = emails.get(0).getFrom();
+
+            // Find the most recent email date
+            Date lastEmailDate = emails.stream()
+                    .map(ReceivedEmail::getSentDate)
+                    .max(Date::compareTo)
+                    .orElse(null);
+
+            conversations.add(new EmailConversation(conversationId, sender, emails, unreadMessages, lastEmailDate));
+        }
 
         // Sort each conversation by date
-        for (List<ReceivedEmail> conversation : conversations) {
-            conversation.sort(Comparator.comparing(ReceivedEmail::getSentDate));
-        }
+        conversations.forEach(conversation ->
+                conversation.getEmails().sort(Comparator.comparing(ReceivedEmail::getSentDate))
+        );
 
         return conversations;
     }
@@ -115,32 +136,52 @@ public class EmailReceiverService {
         return email.getMessageId();
     }
 
-
     private String getTextFromMessage(Message message) throws MessagingException, IOException {
+        String content = "";
         if (message.isMimeType("text/plain")) {
-            return message.getContent().toString();
+            content = message.getContent().toString();
         } else if (message.isMimeType("multipart/*")) {
             MimeMultipart mimeMultipart = (MimeMultipart) message.getContent();
-            return getTextFromMimeMultipart(mimeMultipart);
+            content = getTextFromMimeMultipart(mimeMultipart);
         }
-        return "";
+        return cleanEmailBody(content);
     }
 
     private String getTextFromMimeMultipart(MimeMultipart mimeMultipart) throws MessagingException, IOException {
-        String result = "";
+        StringBuilder result = new StringBuilder();
         int count = mimeMultipart.getCount();
         for (int i = 0; i < count; i++) {
             BodyPart bodyPart = mimeMultipart.getBodyPart(i);
             if (bodyPart.isMimeType("text/plain")) {
-                result = result + "\n" + bodyPart.getContent();
-                break; // without break, the same text appears twice in my tests
+                result.append(bodyPart.getContent());
+                break; // Stop after getting the plain text content
             } else if (bodyPart.isMimeType("text/html")) {
                 String html = (String) bodyPart.getContent();
-                result = result + "\n" + org.jsoup.Jsoup.parse(html).text();
+                result.append(org.jsoup.Jsoup.parse(html).text());
             } else if (bodyPart.getContent() instanceof MimeMultipart) {
-                result = result + getTextFromMimeMultipart((MimeMultipart) bodyPart.getContent());
+                result.append(getTextFromMimeMultipart((MimeMultipart) bodyPart.getContent()));
             }
         }
-        return result;
+        return cleanEmailBody(result.toString());
+    }
+
+    private String cleanEmailBody(String emailBody) {
+        if (emailBody == null || emailBody.isEmpty()) {
+            return emailBody;
+        }
+
+        // Split the email body into lines
+        String[] lines = emailBody.split("\\r?\\n");
+        StringBuilder cleanedBody = new StringBuilder();
+
+        for (String line : lines) {
+            // Skip lines that start with ">" (quoted text) or "On <date>, <email> wrote:"
+            if (line.startsWith(">") || line.matches("^On .* wrote:$")) {
+                break; // Stop processing further as this is the beginning of quoted text
+            }
+            cleanedBody.append(line).append("\n");
+        }
+
+        return cleanedBody.toString().trim();
     }
 }

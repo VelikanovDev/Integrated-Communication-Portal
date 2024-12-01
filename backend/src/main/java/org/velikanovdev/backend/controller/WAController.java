@@ -45,7 +45,7 @@ public class WAController {
 
     @GetMapping("/notifications")
     public SseEmitter getWhatsAppNotifications() {
-        SseEmitter emitter = new SseEmitter();
+        SseEmitter emitter = new SseEmitter(30 * 60 * 1000L); // 30 minutes timeout
         emitters.add(emitter);
 
         emitter.onCompletion(() -> emitters.remove(emitter));

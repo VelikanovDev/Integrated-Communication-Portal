@@ -34,3 +34,11 @@ export const sendEmailMessage = async (recipient, subject, message, messageId) =
         return null;
     }
 }
+
+export const markEmailConversationAsRead = async (conversationId) => {
+    try {
+        await axiosInstance.put(`${API_BASE_URL}/mark-as-read/${conversationId}`);
+    } catch (error) {
+        console.error("Failed to mark email conversation as read: ", error);
+    }
+}

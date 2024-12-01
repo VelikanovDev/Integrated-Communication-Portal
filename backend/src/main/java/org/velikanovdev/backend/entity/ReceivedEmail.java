@@ -20,4 +20,5 @@ public class ReceivedEmail {
     private String references;
     private Date sentDate;
     private String to;
+    private boolean isRead;
 }
