@@ -12,7 +12,7 @@ import java.util.List;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class MessageDetail {
+public class FBMessageDetail {
     private String id;
     private String message;
     private String from;

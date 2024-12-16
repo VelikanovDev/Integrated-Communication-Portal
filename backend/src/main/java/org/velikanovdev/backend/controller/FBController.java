@@ -12,7 +12,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.velikanovdev.backend.entity.ConversationDetail;
-import org.velikanovdev.backend.entity.MessageDetail;
+import org.velikanovdev.backend.entity.FBMessageDetail;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -68,8 +68,8 @@ public class FBController {
                             .count();
 
                     // Map messages to a simplified structure
-                    List<MessageDetail> messageDetails = allMessages.stream()
-                            .map(message -> new MessageDetail(
+                    List<FBMessageDetail> FBMessageDetails = allMessages.stream()
+                            .map(message -> new FBMessageDetail(
                                     message.getId(),
                                     message.getMessage(),
                                     message.getFrom() != null ? message.getFrom().getName() : "Unknown",
@@ -84,7 +84,7 @@ public class FBController {
                             participantName,
                             conversation.getUpdatedTime(),
                             messagesFromPrimaryParticipant,
-                            messageDetails
+                            FBMessageDetails
                     );
                 })
                 .toList();
@@ -181,8 +181,6 @@ public class FBController {
         JsonObject payload = new JsonObject();
         payload.add("recipient", recipient);
         payload.add("message", message);
-
-        System.out.println("Payload: " + payload);
 
         // Send message
         try {

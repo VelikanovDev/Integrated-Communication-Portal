@@ -17,5 +17,5 @@ public class ConversationDetail {
     private String participantName;
     private Date updatedTime;
     private Long messagesFromPrimaryParticipant;
-    private List<MessageDetail> messages;
+    private List<FBMessageDetail> messages;
 }

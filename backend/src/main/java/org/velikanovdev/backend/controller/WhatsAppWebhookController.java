@@ -34,17 +34,13 @@ public class WhatsAppWebhookController {
         this.messageService = messageService;
     }
 
-
-
     @GetMapping("/webhook")
     public String verifyWebhook(@RequestParam("hub.mode") String mode,
                                 @RequestParam("hub.challenge") String challenge,
                                 @RequestParam("hub.verify_token") String verifyToken) {
         if ("subscribe".equals(mode) && VERIFY_TOKEN.equals(verifyToken)) {
-            System.out.println("Webhook verified");
             return challenge;
         } else {
-            System.out.println("Verification failed");
             return "Verification failed";
         }
     }
@@ -64,7 +60,6 @@ public class WhatsAppWebhookController {
                         String sender = message.getFrom();
                         Text text = message.getText();
                         if (sender != null && text != null) {
-                            System.out.println("Received message from " + sender + ": " + text.getBody());
                             WhatsAppMessage msg = new WhatsAppMessage();
                             msg.setSender(sender);
                             msg.setRecipient(PHONE_NUMBER);
