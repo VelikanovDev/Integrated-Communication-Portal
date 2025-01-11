@@ -55,21 +55,36 @@ public class EmailReceiverService {
             // Check if the email is read
             boolean isRead = message.isSet(Flags.Flag.SEEN);
 
-            String from = message.getFrom()[0].toString();
+            String fromEmail = getEmailAddress(message.getFrom()[0].toString());
+            String toEmail = getEmailAddress(message.getAllRecipients()[0].toString());
+
             receivedEmails.add(new ReceivedEmail(
-                    from.substring(from.indexOf('<') + 1, from.indexOf('>')),
+                    fromEmail,
                     message.getSubject(),
                     getTextFromMessage(message),
                     message.getHeader("Message-ID")[0],
                     message.getHeader("In-Reply-To") != null ? message.getHeader("In-Reply-To")[0] : null,
                     referencesHeader,
                     message.getSentDate(),
-                    message.getAllRecipients()[0].toString(),
+                    toEmail,
                     isRead
             ));
         }
 
         folder.close(false);
+    }
+
+    private String getEmailAddress(String fullMessageAddress) {
+        String emailAddress;
+        int start = fullMessageAddress.indexOf('<');
+        int end = fullMessageAddress.indexOf('>');
+        if (start != -1 && end != -1 && start < end) {
+            emailAddress = fullMessageAddress.substring(start + 1, end);
+        } else {
+            emailAddress = fullMessageAddress; // Fallback to the full string if no angle brackets are found
+        }
+
+        return emailAddress;
     }
 
     private List<EmailConversation> groupEmailsByConversation(List<ReceivedEmail> receivedEmails) {
